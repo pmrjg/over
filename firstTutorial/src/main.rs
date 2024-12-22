@@ -21,7 +21,6 @@ use winit::window::{Window, WindowBuilder};
 
 use std::sync::Arc;
 
-
 fn main() {
 
     // instance
@@ -76,4 +75,66 @@ fn main() {
         .expect("No suitable physical device found.");
 
     // Device
+    let (device, mut queues) = Device::new(physical_device, DeviceCreateInfo {
+        enabled_extensions: device_extensions,
+        queue_create_infos: vec![QueueCreateInfo {
+            queue_family_index,
+            ..Default::default()
+        }],
+        ..Default::default()
+    },).unwrap();
+
+    // Queues
+    let queue = queues.next().unwrap();
+
+    // Swapchains and Images
+    let (mut swapchain, images) = {
+        let caps = device.physical_device().surface_capabilities(&surface, Default::default())
+            .unwrap();
+
+        let usage = caps.supported_usage_flags;
+        let alpha = caps.supported_composite_alpha.iter().next().unwrap();
+
+        let image_format = Some(device.physical_device().surface_formats(&surface, Default::default()).unwrap()[0].0,);
+
+        let window = surface.object().unwrap().downcast_ref::<Window>().unwrap();
+        let image_extent: [u32; 2] = window.inner_size().into();
+
+        Swapchain::new(
+            device.clone(),
+            surface.clone(),
+            SwapchainCreateInfo {
+                min_image_count: caps.min_image_count,
+                image_format,
+                image_extent,
+                image_usage: usage,
+                composite_alpha: alpha,
+                ..Default::default()
+            }
+        ).unwrap()
+    };
+
+    // Allocators
+    let command_buffer_allocator = StandardCommandBufferAllocator::new(device.clone(), Default::default());
+
+    // Shaders
+
+    // Renderpass
+    let render_pass = vulkano::single_pass_renderpass!(device.clone(),
+        attachments: {
+            color: {
+                load: Clear,
+                store: Store,
+                format: swapchain.image_format(),
+                samples: 1,
+            }
+        },
+        pass: {
+            color: [color],
+            depth_stencil: {}
+        }
+    ).unwrap();
+
+    // Graphics Pipeline
+
 }
