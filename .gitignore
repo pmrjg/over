@@ -1,6 +1,7 @@
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,jetbrains+all,cmake,rust,rust-analyzer,c++,clion+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,jetbrains+all,cmake,rust,rust-analyzer,c++,clion+all
-
+libraries/
+addons/
 ### C++ ###
 # Prerequisites
 *.d

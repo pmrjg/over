@@ -136,5 +136,73 @@ fn main() {
     ).unwrap();
 
     // Graphics Pipeline
+    let mut viewport = Viewport {
+        origin: [0.0, 0.0],
+        dimensions: [0.0, 0.0],
+        depth_range: 0.0..1.0,
+    };
+
+    // Framebuffers
+    let mut framebuffers = window_size_dependent_setup(&images, render_pass.clone(), &mut viewport);
+
+    let mut recreate_swapchain = false;
+
+    let mut previous_frame_end = Some(Box::new(sync::now(device.clone())) as Box<dyn GpuFuture>);
+
+    event_loop.run(move |event, _, control_flow| match event {
+        Event::WindowEvent {
+            event: WindowEvent::CloseRequested,
+            ..
+        } => {
+            *control_flow = ControlFlow::Exit;
+        }
+        Event::WindowEvent {
+            event: WindowEvent::Resized(_),
+            ..
+        } => {
+            recreate_swapchain = true;
+        }
+        Event::RedrawEventsCleared => {
+            // do our render operations here
+            if recreate_swapchain {
+                let window = surface.object().unwrap().downcast_ref::<Window>().unwrap();
+                let image_extent: [u32; 2] = window.inner_size().into();
+
+                let (new_swapchain, new_images) = match swapchain.recreate(SwapchainCreateInfo {
+                    image_extent,
+                    ..swapchain.create_info()
+                }) {
+                    Ok(r) => r,
+                    Err(SwapchainCreationError::ImageExtentNotSupported { .. }) => return,
+                    Err(e) => panic!("Failed to recreate swapchain: {:?}", e),
+                };
+
+                swapchain = new_swapchain;
+                framebuffers =
+                    window_size_dependent_setup(&new_images, render_pass.clone(), &mut viewport);
+                recreate_swapchain = false;
+            }
+        },
+        _ => {}
+    });
+
+    previous_frame_end
+        .as_mut()
+        .take()
+        .unwrap()
+        .cleanup_finished();
+}
+
+fn window_size_dependent_setup(images: &[Arc<SwapchainImage>], render_pass: Arc<RenderPass>, viewport: &mut Viewport) -> Vec<Arc<Framebuffer>> {
+    let dimensions = images[0].dimensions().width_height();
+    viewport.dimensions = [dimensions[0] as f32, dimensions[1] as f32];
+
+    images.iter().map(|image| {
+        let view = ImageView::new_default(image.clone()).unwrap();
+        Framebuffer::new(render_pass.clone(), FramebufferCreateInfo{
+            attachments: vec![view],
+            ..Default::default()
+        },).unwrap()
+    }).collect::<Vec<_>>()
 
 }
